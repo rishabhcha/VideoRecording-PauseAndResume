@@ -25,7 +25,12 @@
     <com.example.rishabhcha.videorecording.SquareCameraPreview
         android:id="@+id/camera_preview_view"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+        android:layout_height="match_parent"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentBottom="true"
+        android:layout_centerInParent="true"/>
 
 
     <ImageButton
@@ -52,6 +57,10 @@
 
 
 
+
+
+
+
     <!-- these overlap with the SurfaceView; by default, it's underneath the UI layer -->
 
 
@@ -65,6 +74,15 @@
         android:orientation="horizontal"
         android:padding="10dp" >
 
+        <ImageButton
+            android:id="@+id/flashImageButton"
+            android:src="@drawable/ic_flash_off_white_36dp"
+            android:background="@null"
+            android:layout_marginStart="32dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="switchFlash"/>
+
 
         <ImageView
             android:id="@+id/capture_image_button"
@@ -72,6 +90,14 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:src="@drawable/capture_photo_button" />
+
+        <ImageButton
+            android:src="@drawable/ic_switch_video_white_36dp"
+            android:background="@null"
+            android:layout_marginEnd="32dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="switchCamera"/>
 
 
     </LinearLayout>

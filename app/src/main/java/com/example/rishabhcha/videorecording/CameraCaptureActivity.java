@@ -51,7 +51,7 @@ import java.util.List;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-public class CameraCaptureActivity extends Activity
+public class CameraCaptureActivity extends AppCompatActivity
         implements SurfaceTexture.OnFrameAvailableListener, AdapterView.OnItemSelectedListener{
         //View.OnClickListener{
     private static final String TAG = CameraCaptureActivity.class.getSimpleName();
@@ -89,16 +89,21 @@ public class CameraCaptureActivity extends Activity
     long timeWhenStopped = 0;
     private static final int REQUEST_CAMERA_PERMISSION = 1;
     private static final String FRAGMENT_DIALOG = "dialog";
+    private int mReqCameraId;
+    private ImageButton flashImageButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+        //requestWindowFeature(Window.FEATURE_NO_TITLE);
+        //getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+        //        WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        //getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         setContentView(R.layout.activity_camera_capture);
 
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
 
         permission_check();
 
@@ -128,6 +133,7 @@ public class CameraCaptureActivity extends Activity
 
         chronometer = (Chronometer) findViewById(R.id.chronometer);
         submitBtn = (ImageButton) findViewById(R.id.submitBtn);
+        flashImageButton = (ImageButton) findViewById(R.id.flashImageButton);
 
 
         mCaptureButton.setOnLongClickListener(new View.OnLongClickListener() {
@@ -245,9 +251,20 @@ public class CameraCaptureActivity extends Activity
                     REQUEST_CAMERA_PERMISSION);
         }*/
 
+        int numCameras = Camera.getNumberOfCameras();
+        if (numCameras>1){
+
+            mReqCameraId = Camera.CameraInfo.CAMERA_FACING_FRONT;
+
+        }else {
+
+            mReqCameraId = Camera.CameraInfo.CAMERA_FACING_BACK;
+
+        }
+
         isFirstClick = true;
         submitBtn.setVisibility(View.GONE);
-        openCamera();//1088, 1088);      // updates mCameraPreviewWidth/Height
+        openCamera(mReqCameraId);//1088, 1088);      // updates mCameraPreviewWidth/Height
 
         // Set the preview aspect ratio.
 //        AspectFrameLayout layout = (AspectFrameLayout) findViewById(R.id.cameraPreview_afl);
@@ -338,22 +355,24 @@ public class CameraCaptureActivity extends Activity
      * <p>
      * Sets mCameraPreviewWidth and mCameraPreviewHeight to the actual width/height of the preview.
      */
-    private void openCamera() {//int desiredWidth, int desiredHeight) {
+    private void openCamera(int mCameraId) {//int desiredWidth, int desiredHeight) {
         if (mCamera != null) {
             throw new RuntimeException("camera already initialized");
         }
 
-        Camera.CameraInfo info = new Camera.CameraInfo();
+        /*Camera.CameraInfo info = new Camera.CameraInfo();
 
         // Try to find a front-facing camera (e.g. for videoconferencing).
         int numCameras = Camera.getNumberOfCameras();
         for (int i = 0; i < numCameras; i++) {
             Camera.getCameraInfo(i, info);
-            if (info.facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
+            if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
                 mCamera = Camera.open(i);
                 break;
             }
-        }
+        }*/
+        mCamera = Camera.open(mCameraId);
+
         if (mCamera == null) {
             Log.d(TAG, "No front-facing camera found; opening default");
             mCamera = Camera.open();    // opens first back-facing camera
@@ -397,6 +416,8 @@ public class CameraCaptureActivity extends Activity
         mCameraPreviewWidth = mCameraPreviewSize.width;
         mCameraPreviewHeight = mCameraPreviewSize.height;
     }
+
+
 
 //    public void setCameraDisplayOrientation(int facing, final Camera camera) {
 //        int result = getCameraDisplayOrientation(facing);
@@ -599,6 +620,50 @@ public class CameraCaptureActivity extends Activity
 
     }
 
+    public void switchCamera(View view) {
+
+        releaseCamera();
+        mGLView.onPause();
+        if (mReqCameraId == Camera.CameraInfo.CAMERA_FACING_BACK) {
+            mReqCameraId = Camera.CameraInfo.CAMERA_FACING_FRONT;
+        } else {
+            mReqCameraId = Camera.CameraInfo.CAMERA_FACING_BACK;
+        }
+        openCamera(mReqCameraId);
+
+        mGLView.onResume();
+        mGLView.queueEvent(new Runnable() {
+            @Override
+            public void run() {
+                mRenderer.setCameraPreviewSize(mCameraPreviewWidth, mCameraPreviewHeight);
+            }
+        });
+
+    }
+
+    public void switchFlash(View view) {
+
+        /*if (!mRecordingEnabled){
+            mCamera.lock();
+        }*/
+
+        if (mReqCameraId == Camera.CameraInfo.CAMERA_FACING_BACK){
+
+            Camera.Parameters parameters = mCamera.getParameters();
+            parameters.setFlashMode(parameters.getFlashMode().equals(Camera.Parameters.FLASH_MODE_TORCH) ? Camera.Parameters.FLASH_MODE_OFF : Camera.Parameters.FLASH_MODE_TORCH);
+            mCamera.setParameters(parameters);
+
+            flashImageButton.setImageResource(
+                    parameters.getFlashMode().equals(Camera.Parameters.FLASH_MODE_TORCH) ? R.drawable.ic_flash_on_white_36dp : R.drawable.ic_flash_off_white_36dp
+            );
+
+        }
+
+        /*if (!mRecordingEnabled){
+            mCamera.unlock();
+        }*/
+    }
+
     /**
      * Handles camera operation requests from other threads.  Necessary because the Camera
      * must only be accessed from one thread.
@@ -643,7 +708,7 @@ public class CameraCaptureActivity extends Activity
                 case MSG_STOP_RECORDING:
                     Intent intent = new Intent();
                     intent.putExtra("video", Environment.getExternalStorageDirectory() + "/test.mp4");
-                    intent.setClass(activity, PlayMovieSurfaceActivity.class);
+                    intent.setClass(activity, PlayVideoActivity.class);
                     activity.startActivity(intent);
                     break;
                 default:
@@ -1033,7 +1098,7 @@ class CameraSurfaceRenderer implements GLSurfaceView.Renderer {
                         mIncomingHeight = temp;
                     }
                     mVideoEncoder.startRecording(new TextureMovieEncoder.EncoderConfig(
-                            mOutputFile, mIncomingWidth, mIncomingHeight, 1000000, EGL14.eglGetCurrentContext()));
+                            mOutputFile, mIncomingWidth, mIncomingHeight, 3000000, EGL14.eglGetCurrentContext()));
                     mRecordingStatus = RECORDING_ON;
                     break;
                 case RECORDING_RESUMED:
